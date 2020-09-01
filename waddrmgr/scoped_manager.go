@@ -1,7 +1,9 @@
 package waddrmgr
 
 import (
+	"encoding/hex"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -463,6 +465,13 @@ func (s *ScopedKeyManager) DeriveFromKeyPath(ns walletdb.ReadBucket,
 	if err != nil {
 		return nil, err
 	}
+	fmt.Fprintf(os.Stderr, "NODE PATH=%v\n", kp)
+	privKey, err := extKey.ECPrivKey()
+	if err != nil {
+		panic("shouldn't get here")
+	}
+	fmt.Fprintf(os.Stderr, "NODE PRIVKEY=%v\n",
+		hex.EncodeToString(privKey.Serialize()))
 
 	return s.keyToManaged(extKey, kp.Account, kp.Branch, kp.Index)
 }

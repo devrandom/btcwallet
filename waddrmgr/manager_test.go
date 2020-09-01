@@ -6,6 +6,7 @@ package waddrmgr
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -2764,5 +2765,50 @@ func testNewRawAccount(t *testing.T, mgr *Manager, db walletdb.DB,
 	if !bytes.Equal(accountAddrNext.AddrHash(), accountTargetAddr.AddrHash()) {
 		t.Fatalf("wrong pubkey hash: %x vs %x", accountAddrNext.AddrHash(),
 			accountTargetAddr.AddrHash())
+	}
+}
+
+func TestKeyDerivation(t *testing.T) {
+	// m/1017'/coinType'/keyFamily'/0/index
+
+	purpose := uint32(1017)
+	coinType := uint32(0)
+	keyFamily := uint32(6)
+	branch := uint32(0)
+	index := uint32(0)
+
+	for ii := 0; ii < 1024; ii++ {
+		seed := make([]byte, 32)
+		binary.BigEndian.PutUint32(seed[28:], uint32(ii))
+		masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+		if err != nil {
+			t.Fatalf("hdkeychain.NewMaster failed: %v", err)
+		}
+		purposeKey, err := masterKey.Child(purpose + hdkeychain.HardenedKeyStart)
+		if err != nil {
+			t.Fatalf("masterKey.Child failed: %v", err)
+		}
+		coinKey, err := purposeKey.Child(coinType + hdkeychain.HardenedKeyStart)
+		if err != nil {
+			t.Fatalf("purposeKey.Child failed: %v", err)
+		}
+		acctKey, err := deriveAccountKey(coinKey, keyFamily)
+		if err != nil {
+			t.Fatalf("derive: unexpected error: %v", err)
+		}
+		branchKey, err := acctKey.Child(branch)
+		if err != nil {
+			t.Fatalf("failed to derive extended key branch %d: %v",
+				branch, err)
+		}
+		addressKey, err := branchKey.Child(index)
+		if err != nil {
+			t.Fatalf("failed to derive child extended key %d: %v",
+				index, err)
+		}
+		privKey, err := addressKey.ECPrivKey()
+		fmt.Fprintf(os.Stderr, "%s %v\n",
+			hex.EncodeToString(seed),
+			hex.EncodeToString(privKey.Serialize()))
 	}
 }

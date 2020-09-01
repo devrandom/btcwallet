@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -1841,6 +1842,7 @@ func Create(ns walletdb.ReadWriteBucket,
 			str := "failed to derive master extended key"
 			return managerError(ErrKeyChain, str, err)
 		}
+		fmt.Fprintf(os.Stderr, "MASTER=%v\n", rootKey)
 		rootPubKey, err := rootKey.Neuter()
 		if err != nil {
 			str := "failed to neuter master extended key"
